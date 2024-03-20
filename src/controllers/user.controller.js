@@ -258,7 +258,7 @@ const updateAccountDetails = asyncHandler(async (req, res) =>{
     if( !fullName || !email) {
         throw new ApiError(400, "All fields are required")
     }
-    const user  = User.findByIdAndUpdate(
+    const user  = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {fullName, email}
@@ -337,6 +337,8 @@ const updateUserCoverImage = asyncHandler(async(req, res) => {
     )
 })
 //End of update updateUserCoverImage
+
+//TODO: delete old image - assignment for both avatar and cover
 
 export { 
     registerUser,
