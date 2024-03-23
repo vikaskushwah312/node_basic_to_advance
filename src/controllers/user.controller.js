@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
 import { User } from "../models/user.model.js"
-import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import Jwt from "jsonwebtoken"
 import mongoose from "mongoose";
@@ -277,18 +277,20 @@ const updateAccountDetails = asyncHandler(async (req, res) =>{
 //Update avatar
 const updateUserAvatar = asyncHandler(async(req, res) => {
     const avatarLocalPath = req.file?.path
-
+    
     if(!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is missing")
     }
-
     //avatar upload on cloudinary
     const avatar =  await uploadOnCloudinary(avatarLocalPath)
 
     if(!avatar.url) {
         throw new ApiError(400, "Error while uploading a avatar")
     }
-    const user = User.findByIdAndUpdate(
+    //Avatar Delete From Cloudinary
+    await deleteFromCloudinary(req.user?.avatar)
+
+    const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {
@@ -315,9 +317,11 @@ const updateUserCoverImage = asyncHandler(async(req, res) => {
     }
 
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+    //Covor Image Delete From Cloudinary
+    await deleteFromCloudinary(req.user?.coverImage)
 
     if (!coverImage.url) {
-        throw new ApiError(400, "Error while uploading on avatar")
+        throw new ApiError(400, "Error while uploading on coverImage")
 
     }
 
@@ -339,13 +343,13 @@ const updateUserCoverImage = asyncHandler(async(req, res) => {
 })
 //End of update updateUserCoverImage
 
-//TODO: delete old image - assignment for both avatar and cover
-
 //getUserChannelProfile
 const getUserChannelProfile = asyncHandler( async (req, res) =>{
-    const { username } = req.params
 
+    const { username } = req.params
+    
     if(!username?.trim()) {
+
         throw new ApiError(400, "Username is missing")
     }
     const channel = await User.aggregate([
@@ -382,7 +386,7 @@ const getUserChannelProfile = asyncHandler( async (req, res) =>{
                 },
                 isSubscribed: {
                     $cond: {
-                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                        if: {$in: [req.user?._id, ["$subscribers.subscriber"]]},
                         then: true,
                         else: false
                     }
